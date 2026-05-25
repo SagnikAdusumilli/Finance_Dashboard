@@ -1,0 +1,58 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table Transaction_raw {
+  date date
+  Name varchar
+  withdrawal float(2)
+  income float(2)
+  Category varchar
+  Account_Name varchar
+  transaction_type varchar
+}
+Table Transaction_invalid {
+  date date
+  Name varchar
+  withdrawal float(2)
+  income float(2)
+  Category varchar
+  Account_Name varchar
+  transaction_type varchar
+  validation_error varchar
+  validation_timestamp timestamp
+}
+Table Transaction_silver {
+  date date
+  Name varchar
+  amount float(2)
+  Category varchar
+  Account_Name varchar
+  transaction_type varchar
+}
+
+// This is will go in the data folder
+// under gold table where it will be manually maintained
+// user will be able to update account balances through the app
+Table account_balances {
+  Date date
+  Account_Name varchar
+  balance double(2)
+}
+
+// this is gold Table
+// when streamlit is creates dashboard
+// bar chars can be created on from futher dervied 
+// aggregations
+Table cash_aggregate {
+  Date_month varchar
+  Category varchar
+  amount float(2)
+}
+
+// this is derived view on streamlit 
+Table Cashflow {
+  Date_month varchar
+  total_income float(2)
+  total_withdrawal float(2)
+  cashflow float(2)
+}
