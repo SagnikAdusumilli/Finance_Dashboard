@@ -10,6 +10,13 @@ Table Transaction_raw {
   Account_Name varchar
   transaction_type varchar
 }
+
+Table file_manifest {
+    file_name: varchar
+    row_count: int
+    loaded_at: date
+}
+
 Table Transaction_invalid {
   date date
   Name varchar
