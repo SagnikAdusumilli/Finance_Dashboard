@@ -4,7 +4,7 @@
 Table Transaction_raw {
   date date
   Name varchar
-  withdrawl1 float(2)
+  withdrawal float(2)
   income float(2)
   Category varchar
   Account_Name varchar
