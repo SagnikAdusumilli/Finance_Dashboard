@@ -14,6 +14,7 @@ def setup_database(conn):
         CREATE TABLE IF NOT EXISTS account_balances (
             snapshot_date DATE,
             account_id INTEGER,
+            account_name VARCHAR,
             balance DOUBLE,
             PRIMARY KEY (snapshot_date, account_id)
         );
@@ -43,11 +44,21 @@ def ingest_account_data():
             print(f"Error: {ACCOUNTS_CSV} not found.")
             sys.exit(1)
 
+        # Strictly require account_id and account_name
+        # Using .df().columns to correctly access column names from the result
+        col_names = conn.execute(f"SELECT * FROM read_csv_auto('{ACCOUNTS_CSV}', normalize_names=True) LIMIT 0").df().columns
+        required_cols = ['account_id', 'account_name']
+        missing_cols = [col for col in required_cols if col not in col_names]
+        if missing_cols:
+            print(f"Failure: Required column(s) {missing_cols} missing in {ACCOUNTS_CSV}")
+            sys.exit(1)
+
         # Create a view that cleans balance strings (removes commas/dollars) on the fly
         conn.execute(f"""
             CREATE OR REPLACE TEMP VIEW raw_balances AS 
             SELECT 
                 account_id::INTEGER as account_id, 
+                account_name::VARCHAR as account_name,
                 regexp_replace(balance::VARCHAR, '[,$]', '', 'g')::DOUBLE as balance 
             FROM read_csv_auto('{ACCOUNTS_CSV}', normalize_names=True)
         """)
@@ -87,26 +98,32 @@ def ingest_account_data():
         pre_count = conn.execute("SELECT COUNT(*) FROM account_balances").fetchone()[0]
         
         # Upsert Logic:
-        # 1. Insert/Update today's record if it differs from the most recent PREVIOUS balance
+        # 1. Insert/Update today's record if it differs from the most recent PREVIOUS balance or name
         # 2. Use ON CONFLICT to handle multiple runs on the same day
         conn.execute(f"""
-            INSERT INTO account_balances (snapshot_date, account_id, balance)
+            INSERT INTO account_balances (snapshot_date, account_id, account_name, balance)
             SELECT 
                 '{today}' as snapshot_date, 
                 curr.account_id, 
+                curr.account_name,
                 curr.balance
             FROM raw_balances curr
             LEFT JOIN (
                 -- Get the most recent balance record BEFORE today for each account
-                SELECT account_id, balance, 
+                SELECT account_id, account_name, balance, 
                        ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY snapshot_date DESC) as rn
                 FROM account_balances
                 WHERE snapshot_date < '{today}'
             ) prev ON curr.account_id = prev.account_id AND prev.rn = 1
-            WHERE prev.balance IS NULL OR round(prev.balance, 2) != round(curr.balance, 2)
+            WHERE prev.balance IS NULL 
+               OR round(prev.balance, 2) != round(curr.balance, 2)
+               OR prev.account_name != curr.account_name
             ON CONFLICT (snapshot_date, account_id) 
-            DO UPDATE SET balance = excluded.balance
+            DO UPDATE SET 
+                balance = excluded.balance,
+                account_name = excluded.account_name
             WHERE round(account_balances.balance, 2) != round(excluded.balance, 2)
+               OR account_balances.account_name != excluded.account_name
         """)
         
         post_count = conn.execute("SELECT COUNT(*) FROM account_balances").fetchone()[0]

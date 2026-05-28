@@ -47,7 +47,7 @@ Table account_balances {
   balance double(2)
 }
 
-Table assest_balances {
+Table account_balances {
   snap_date date
   account_id
   account_name varchar

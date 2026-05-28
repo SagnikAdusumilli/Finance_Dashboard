@@ -61,11 +61,95 @@ def load_cashflow_data():
         st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+def load_networth_data():
+    """Loads the latest account balances and calculates total networth."""
+    if not DB_PATH.exists():
+        return 0, None, pd.DataFrame()
+
+    try:
+        conn = duckdb.connect(str(DB_PATH))
+        
+        # Check if table exists
+        table_exists = conn.execute("SELECT count(*) FROM information_schema.tables WHERE table_name = 'account_balances'").fetchone()[0]
+        if not table_exists:
+            conn.close()
+            return 0, None, pd.DataFrame()
+
+        # Create temp view for the latest snapshot
+        conn.execute("""
+            CREATE OR REPLACE TEMP VIEW latest_balances AS
+            SELECT account_id, account_name, balance
+            FROM account_balances
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM account_balances)
+        """)
+        
+        # Get total and date
+        total_data = conn.execute("SELECT SUM(balance), (SELECT MAX(snapshot_date) FROM account_balances) FROM latest_balances").fetchone()
+        
+        # Get individual accounts
+        df_accounts = conn.execute("SELECT account_name, balance FROM latest_balances ORDER BY balance DESC").df()
+
+        conn.close()
+        
+        if total_data and total_data[0] is not None:
+            return total_data[0], total_data[1], df_accounts
+        return 0, None, pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading networth data: {e}")
+        return 0, None, pd.DataFrame()
+
 def main():
+    # Sidebar Navigation Placeholders
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to", ["Networth", "Retirement", "Cash flow"])
+
     st.title("Financial Summary")
     
+    # Custom CSS for larger font in cards
+    st.markdown("""
+        <style>
+        .card-text {
+            font-size: 22px !important;
+        }
+        .card-header {
+            font-size: 30px !important;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
 
+    # Top Row: Networth and Projections
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown('<div class="card-header">Total Networth</div>', unsafe_allow_html=True)
+        total_networth, latest_date, df_accounts = load_networth_data()
+        
+        if latest_date:
+            st.markdown(f'<div class="card-text"><b>networth: ${total_networth:,.2f} as of {latest_date}</b></div>', unsafe_allow_html=True)
+            for _, row in df_accounts.iterrows():
+                st.markdown(f'<div class="card-text">- {row["account_name"]}: ${row["balance"]:,.2f}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No networth data available. Run ingestion pipeline.")
+            st.code("python src/pipelines/ingest_account_data.py")
+
+    with col_right:
+        st.markdown('<div class="card-header">Projections</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <div class="card-text">
+                - <b>Retirement target:</b> $0.00 (Placeholder)<br>
+                - <b>Age to retirement:</b> 0 (Placeholder)<br>
+                - <b>Total contribution:</b> $0.00 (Placeholder)<br>
+                - <b>Monthly contribution:</b> $0.00 (Placeholder)
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Cash Flow Analysis Section
     st.header("Cash Flow Analysis")
     
     df_cashflow = load_cashflow_data()
