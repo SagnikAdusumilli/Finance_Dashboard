@@ -41,10 +41,26 @@ Table Transaction_silver {
 // under gold table where it will be manually maintained
 // user will be able to update account balances through the app
 Table account_balances {
-  Date date
+  snap_date
+  Account_id
   Account_Name varchar
   balance double(2)
 }
+
+Table assest_balances {
+  snap_date date
+  account_id
+  account_name varchar
+  balance double(2)
+}
+
+// account_id is a foreigh key to account_balances table
+Table contributions {
+  snap_date
+  account_id
+  monthly_contribution_amnt
+}
+
 
 // this is gold Table
 // when streamlit is creates dashboard
