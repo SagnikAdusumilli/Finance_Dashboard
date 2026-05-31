@@ -2,9 +2,25 @@ import duckdb
 import pandas as pd
 from pathlib import Path
 import streamlit as st
+import json
 
 BASE_DIR = Path(__file__).parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "finance.db"
+USER_CONFIG_PATH = BASE_DIR / "data" / "manual" / "user_config.json"
+
+def load_user_data():
+
+    if not USER_CONFIG_PATH.exists():
+        return {}
+    try: 
+        with open(USER_CONFIG_PATH) as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return {}
+
+
+
 
 def load_cashflow_data():
     """Loads and aggregates cashflow data from Transaction_silver."""
@@ -73,7 +89,7 @@ def load_networth_data():
         # Create temp view for the latest snapshot
         conn.execute("""
             CREATE OR REPLACE TEMP VIEW latest_balances AS
-            SELECT account_id, account_name, balance
+            SELECT asset_id, asset_name, balance
             FROM account_balances
             WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM account_balances)
         """)
@@ -82,7 +98,7 @@ def load_networth_data():
         total_data = conn.execute("SELECT SUM(balance), (SELECT MAX(snapshot_date) FROM account_balances) FROM latest_balances").fetchone()
         
         # Get individual accounts
-        df_accounts = conn.execute("SELECT account_name, balance FROM latest_balances ORDER BY balance DESC").df()
+        df_accounts = conn.execute("SELECT asset_name, balance FROM latest_balances ORDER BY balance DESC").df()
 
         conn.close()
         

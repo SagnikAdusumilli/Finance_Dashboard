@@ -1,6 +1,6 @@
 {
-  "retirement_value_target": 2000000,
-  "retirement_age_target": 50,
+  "liquidity_target": 2000000,
+  "age_target": 50,
   "date_of_birth": "1998-12-24",
   "expected_annual_return": 0.065
 }

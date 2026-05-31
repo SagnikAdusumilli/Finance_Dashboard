@@ -41,9 +41,18 @@ Table Transaction_silver {
 // under gold table where it will be manually maintained
 // user will be able to update account balances through the app
 Table account_balances {
-  Date date
-  Account_Name varchar
+  Date snap_date // pipeline generated
+  asset_id
+  asset_name
+  asset_type varchar
+  inclue_in_projection boolean
   balance double(2)
+}
+
+Table contributions {
+  snap_date,
+  account_id,
+  monthy_contriubution_amnt
 }
 
 // this is gold Table
