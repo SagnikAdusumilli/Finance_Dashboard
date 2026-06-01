@@ -23,7 +23,7 @@ def render_projections_card():
 
     if user_data and len(df_assets) > 0:
       st.markdown(f'<div class="card-text">- Liquidity Target: ${tgt_sum:,}</div>',unsafe_allow_html=True)
-      st.markdown(f'<div class="card-text">- Current Liqudity: {curr_balance:,}</div>',unsafe_allow_html=True)
+      st.markdown(f'<div class="card-text">- Current Liqudity: ${curr_balance:,}</div>',unsafe_allow_html=True)
       st.markdown(f'<div class="card-text">- Target Age: {tgt_age}</div>',unsafe_allow_html=True)
       st.markdown(f'<div class="card-text">- Projected Age: {proj_age}</div>',unsafe_allow_html=True)
       st.markdown(f'<div class="card-text">- Current contributions: ${month_contri:,} per month, ${total_contri:,} per year</div>',unsafe_allow_html=True)
