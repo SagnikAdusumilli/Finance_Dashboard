@@ -8,20 +8,18 @@ BASE_DIR = Path(__file__).parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "finance.db"
 USER_CONFIG_PATH = BASE_DIR / "data" / "manual" / "user_config.json"
 
+@st.cache_data(ttl=600)
 def load_user_data():
-
     if not USER_CONFIG_PATH.exists():
         return {}
     try: 
         with open(USER_CONFIG_PATH) as f:
             return json.load(f)
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        st.error(f"Error loading user config: {e}")
         return {}
 
-
-
-
+@st.cache_data(ttl=600)
 def load_cashflow_data():
     """Loads and aggregates cashflow data from Transaction_silver."""
     if not DB_PATH.exists():
@@ -69,11 +67,12 @@ def load_cashflow_data():
         conn.close()
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        st.error(f"Error loading cashflow data: {e}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
 def load_networth_data():
-    """Loads the latest account balances and calculates total networth."""
+    """Loads the latest asset balances and calculates total networth."""
     if not DB_PATH.exists():
         return 0, None, pd.DataFrame()
 
@@ -89,7 +88,7 @@ def load_networth_data():
         # Create temp view for the latest snapshot
         conn.execute("""
             CREATE OR REPLACE TEMP VIEW latest_balances AS
-            SELECT asset_id, asset_name, balance
+            SELECT * EXCLUDE row_hash
             FROM account_balances
             WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM account_balances)
         """)
@@ -97,14 +96,40 @@ def load_networth_data():
         # Get total and date
         total_data = conn.execute("SELECT SUM(balance), (SELECT MAX(snapshot_date) FROM account_balances) FROM latest_balances").fetchone()
         
-        # Get individual accounts
-        df_accounts = conn.execute("SELECT asset_name, balance FROM latest_balances ORDER BY balance DESC").df()
+        # Get individual assets
+        df_assets = conn.execute("SELECT * FROM latest_balances ORDER BY balance DESC").df()
 
         conn.close()
         
         if total_data and total_data[0] is not None:
-            return total_data[0], total_data[1], df_accounts
+            return total_data[0], total_data[1], df_assets
         return 0, None, pd.DataFrame()
     except Exception as e:
         st.error(f"Error loading networth data: {e}")
         return 0, None, pd.DataFrame()
+    
+@st.cache_data(ttl=600)
+def load_contri_data():
+    """ loads the contribution table"""
+    if not DB_PATH.exists():
+        return 0, 0, pd.DataFrame()
+    
+    try:
+        conn = duckdb.connect(str(DB_PATH))
+
+        table_exists = conn.execute(""" SELECT count(*) from account_contributions""")
+
+        if not table_exists:
+            conn.close()
+            return 0, 0, pd.DataFrame()
+        
+        total_monthly_contri = conn.execute(""" Select sum(monthly_contribution_amnt) from account_contributions""").fetchone()
+        contri_df = conn.execute(""" Select * from account_contributions""").df()
+
+        if total_monthly_contri and total_monthly_contri[0] is not None:
+            return total_monthly_contri[0], total_monthly_contri[0]*12, contri_df
+        return 0,0, pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"Error loading contribution data: {e}")
+        return 0, 0, pd.DataFrame()
