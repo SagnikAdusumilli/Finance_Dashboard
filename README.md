@@ -29,4 +29,9 @@ Streamlit provides:
 - Savings projections
 - Retirement target projections
 - Data upload and validation feedback
-- Editable assumptions for retirement age, target amount, monthly contribution, and liquid cash goal
+
+
+## MVP 2 scope 
+- add in edit feature of retirement age and target liquidity
+- TODO:
+  -- deeper breakdown of transaction data
