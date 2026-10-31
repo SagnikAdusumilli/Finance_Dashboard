@@ -51,7 +51,7 @@ Table account_balances {
 
 Table contributions {
   snap_date,
-  account_id,
+  asset_id,
   monthy_contriubution_amnt
 }
 
