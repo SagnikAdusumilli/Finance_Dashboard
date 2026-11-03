@@ -83,24 +83,36 @@ CREATE TABLE IF NOT EXISTS plaid_sync_state (
 );
 
 -- staging table for api return
-CREATE TABLE IF NOT EXISTS plaid_transactions (
+CREATE OR REPLACE TABLE plaid_transactions (
+    -- Identifiers
     environment VARCHAR NOT NULL,
     item_id VARCHAR NOT NULL,
     transaction_id VARCHAR NOT NULL,
-
     account_id VARCHAR NOT NULL,
+
+    -- Transaction details
     date DATE,
     amount DECIMAL(18, 2),
     iso_currency_code VARCHAR,
     description VARCHAR,
+    merchant_name VARCHAR,
 
+    -- Transaction status
     pending BOOLEAN DEFAULT FALSE,
     pending_transaction_id VARCHAR,
 
+    -- Plaid categorization
+    plaid_category_primary VARCHAR,
+    plaid_category_detailed VARCHAR,
+    plaid_category_confidence VARCHAR,
+
+    -- Original API response
     raw_json JSON,
 
+    -- Ingestion metadata
     is_removed BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
+    -- Idempotency
     PRIMARY KEY (environment, item_id, transaction_id)
 );
